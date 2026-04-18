@@ -1,0 +1,16 @@
+{
+  "project_name": "Medicaid Drug Utilization Analysis",
+  "source": "https://www.medicaid.gov/medicaid/prescription-drugs/state-drug-utilization-data",
+  "data_file": "https://download.medicaid.gov/data/StateDrugUtilizationData-2025.csv",
+  "period": "2025, all available quarters",
+  "year": 2025,
+  "quarter": "all",
+  "include_suppressed": false,
+  "rows_read": 3972559,
+  "rows_analyzed": 1797928,
+  "states": 52,
+  "drug_products": 7859,
+  "ndcs": 32716,
+  "total_prescriptions": 537883021.0,
+  "total_medicaid_spending": 77753123919.72
+}

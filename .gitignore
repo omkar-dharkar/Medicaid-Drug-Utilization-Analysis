@@ -1,5 +1,9 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-outputs/
+outputs/*
+!outputs/
+!outputs/run_metadata.json
+!outputs/summary_tables/
+!outputs/summary_tables/*.csv
 .streamlit/secrets.toml

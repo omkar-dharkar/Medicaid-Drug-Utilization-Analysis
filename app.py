@@ -255,62 +255,100 @@ with st.sidebar:
 
 metadata = load_metadata()
 processed_path = processed_file_for_metadata(metadata)
+summary_mode = processed_path is None
 
 st.title(PROJECT_NAME)
 
-if not metadata or processed_path is None:
-    st.warning("No processed CMS output was found. Use the sidebar button to run the latest CMS ETL.")
+if not metadata:
+    st.warning("No CMS ETL metadata was found. Use the sidebar button to run the latest CMS ETL.")
     st.stop()
 
 st.caption(f"Source: {SOURCE_URL}")
 st.caption(f"Data file: {metadata.get('data_file', 'Unknown')}")
 
-data = load_processed_data(str(processed_path))
-
-with st.sidebar:
-    st.divider()
-    st.subheader("Explore")
-    all_states = sorted(data["state"].dropna().astype(str).unique().tolist())
-    all_quarters = sorted(data["quarter"].dropna().astype(int).unique().tolist())
-    all_utilization_types = sorted(
-        data["utilization_type"].dropna().astype(str).unique().tolist()
+if summary_mode:
+    st.info(
+        "Running in summary mode because the large processed CSV is not present. "
+        "Charts use committed summary tables. Run the CMS ETL from the sidebar for full row-level filtering."
     )
 
-    selected_states = st.multiselect("States", all_states, default=[])
-    selected_quarters = st.multiselect("Quarters", all_quarters, default=all_quarters)
-    selected_utilization = st.multiselect(
-        "Utilization types", all_utilization_types, default=all_utilization_types
+    drug_summary = load_summary_table("drug_summary")
+    state_summary = load_summary_table("state_spending")
+    quarter_summary = load_summary_table("quarter_summary")
+    labeler_summary = load_summary_table("labeler_summary")
+    utilization_summary = load_summary_table("utilization_summary")
+
+    required_summaries = {
+        "drug_summary": drug_summary,
+        "state_spending": state_summary,
+        "quarter_summary": quarter_summary,
+        "labeler_summary": labeler_summary,
+        "utilization_summary": utilization_summary,
+    }
+    missing = [name for name, frame in required_summaries.items() if frame.empty]
+    if missing:
+        st.warning(
+            "Summary outputs are missing. Run the latest CMS ETL from the sidebar. "
+            f"Missing: {', '.join(missing)}"
+        )
+        st.stop()
+
+    total_medicaid = float(metadata.get("total_medicaid_spending", 0))
+    total_non_medicaid = float(state_summary["total_non_medicaid_spending"].sum())
+    total_prescriptions = float(metadata.get("total_prescriptions", 0))
+    total_units = float(state_summary["total_units"].sum())
+    top_drug = drug_summary.iloc[0]["product_name"] if not drug_summary.empty else "N/A"
+    row_count = int(metadata.get("rows_analyzed", 0))
+    state_count = int(metadata.get("states", state_summary["state"].nunique()))
+else:
+    data = load_processed_data(str(processed_path))
+
+    with st.sidebar:
+        st.divider()
+        st.subheader("Explore")
+        all_states = sorted(data["state"].dropna().astype(str).unique().tolist())
+        all_quarters = sorted(data["quarter"].dropna().astype(int).unique().tolist())
+        all_utilization_types = sorted(
+            data["utilization_type"].dropna().astype(str).unique().tolist()
+        )
+
+        selected_states = st.multiselect("States", all_states, default=[])
+        selected_quarters = st.multiselect("Quarters", all_quarters, default=all_quarters)
+        selected_utilization = st.multiselect(
+            "Utilization types", all_utilization_types, default=all_utilization_types
+        )
+        product_search = st.text_input("Drug name contains")
+
+    filtered_data = apply_filters(
+        data,
+        selected_states,
+        selected_quarters,
+        selected_utilization,
+        product_search,
     )
-    product_search = st.text_input("Drug name contains")
 
-filtered_data = apply_filters(
-    data,
-    selected_states,
-    selected_quarters,
-    selected_utilization,
-    product_search,
-)
+    if filtered_data.empty:
+        st.warning("No rows match the current filters.")
+        st.stop()
 
-if filtered_data.empty:
-    st.warning("No rows match the current filters.")
-    st.stop()
+    analysis = aggregate_for_current_filters(filtered_data)
+    drug_summary = analysis["drug_summary"]
+    state_summary = analysis["state_summary"]
+    quarter_summary = analysis["quarter_summary"]
+    labeler_summary = analysis["labeler_summary"]
+    utilization_summary = analysis["utilization_summary"]
 
-analysis = aggregate_for_current_filters(filtered_data)
-drug_summary = analysis["drug_summary"]
-state_summary = analysis["state_summary"]
-quarter_summary = analysis["quarter_summary"]
-labeler_summary = analysis["labeler_summary"]
-utilization_summary = analysis["utilization_summary"]
-
-total_medicaid = filtered_data["medicaid_amount_reimbursed"].sum()
-total_non_medicaid = filtered_data["non_medicaid_amount_reimbursed"].sum()
-total_prescriptions = filtered_data["number_of_prescriptions"].sum()
-total_units = filtered_data["units_reimbursed"].sum()
-top_drug = drug_summary.iloc[0]["product_name"] if not drug_summary.empty else "N/A"
+    total_medicaid = filtered_data["medicaid_amount_reimbursed"].sum()
+    total_non_medicaid = filtered_data["non_medicaid_amount_reimbursed"].sum()
+    total_prescriptions = filtered_data["number_of_prescriptions"].sum()
+    total_units = filtered_data["units_reimbursed"].sum()
+    top_drug = drug_summary.iloc[0]["product_name"] if not drug_summary.empty else "N/A"
+    row_count = len(filtered_data)
+    state_count = filtered_data["state"].nunique()
 
 metric_cols = st.columns(6)
-metric_cols[0].metric("Rows", compact_number(len(filtered_data)))
-metric_cols[1].metric("States", number(filtered_data["state"].nunique()))
+metric_cols[0].metric("Rows", compact_number(row_count))
+metric_cols[1].metric("States", number(state_count))
 metric_cols[2].metric("Medicaid", compact_money(total_medicaid))
 metric_cols[3].metric("Non-Medicaid", compact_money(total_non_medicaid))
 metric_cols[4].metric("Prescriptions", compact_number(total_prescriptions))
@@ -464,10 +502,15 @@ with etl_tab:
         )
     st.dataframe(pd.DataFrame(file_rows), use_container_width=True, hide_index=True)
 
-    st.download_button(
-        "Download Filtered Rows",
-        data=filtered_data.to_csv(index=False).encode("utf-8"),
-        file_name="filtered_medicaid_rows.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
+    if summary_mode:
+        st.caption("Summary mode downloads use the aggregated tables committed with the app.")
+        download_csv_button(state_summary, "state_summary.csv", "Download State Summary")
+        download_csv_button(drug_summary, "drug_summary.csv", "Download Drug Summary")
+    else:
+        st.download_button(
+            "Download Filtered Rows",
+            data=filtered_data.to_csv(index=False).encode("utf-8"),
+            file_name="filtered_medicaid_rows.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )

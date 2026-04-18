@@ -3,6 +3,10 @@ Medicaid Drug Utilization Analysis
 
 This is a Streamlit analytics app and automated Python ETL pipeline for CMS Medicaid State Drug Utilization Data (SDUD). It uses the latest configured CMS file, preprocesses millions of utilization and reimbursement rows, builds normalized analysis outputs, and lets users explore Medicaid drug utilization interactively.
 
+![App preview](assets/app-screenshot.png)
+
+[![Deploy to Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=https://github.com/omkar-dharkar/Medicaid-Drug-Utilization-Analysis&branch=main&mainModule=app.py)
+
 Official source page:
 
 ```text
@@ -31,6 +35,18 @@ run_project.bat
 ```
 
 The app opens in your browser. If `outputs/` has not been generated yet, use the sidebar button to run the latest CMS ETL.
+
+Deploy On Streamlit Community Cloud
+-----------------------------------
+
+1. Go to the deploy link above.
+2. Sign in with GitHub.
+3. Select repository `omkar-dharkar/Medicaid-Drug-Utilization-Analysis`.
+4. Set branch to `main`.
+5. Set main file path to `app.py`.
+6. Click `Deploy`.
+
+The GitHub version includes lightweight 2025 summary outputs so the hosted app can open immediately. The full processed CMS CSV is intentionally not committed because it is large; use the app sidebar or `python medicaid_analysis.py` to regenerate full local ETL outputs.
 
 Refresh Latest CMS Data
 -----------------------

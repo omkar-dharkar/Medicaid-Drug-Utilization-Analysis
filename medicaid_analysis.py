@@ -364,6 +364,30 @@ def build_analysis(base: pd.DataFrame) -> dict[str, pd.DataFrame]:
         .reset_index(drop=True)
     )
 
+    quarter_summary = (
+        base.groupby("quarter", as_index=False)
+        .agg(
+            total_medicaid_spending=("medicaid_amount_reimbursed", "sum"),
+            total_non_medicaid_spending=("non_medicaid_amount_reimbursed", "sum"),
+            total_prescriptions=("number_of_prescriptions", "sum"),
+            total_units=("units_reimbursed", "sum"),
+        )
+        .sort_values("quarter")
+        .reset_index(drop=True)
+    )
+
+    utilization_summary = (
+        base.groupby("utilization_type", as_index=False)
+        .agg(
+            total_medicaid_spending=("medicaid_amount_reimbursed", "sum"),
+            total_non_medicaid_spending=("non_medicaid_amount_reimbursed", "sum"),
+            total_prescriptions=("number_of_prescriptions", "sum"),
+            total_units=("units_reimbursed", "sum"),
+        )
+        .sort_values("total_medicaid_spending", ascending=False)
+        .reset_index(drop=True)
+    )
+
     top_medicaid_drugs = (
         drug_summary.sort_values(
             ["total_medicaid_spending", "product_name"], ascending=[False, True]
@@ -457,9 +481,12 @@ def build_analysis(base: pd.DataFrame) -> dict[str, pd.DataFrame]:
         "top_by_units": top_by_units,
         "top_by_prescriptions": top_by_prescriptions,
         "state_spending": state_spending,
+        "quarter_summary": quarter_summary,
+        "utilization_summary": utilization_summary,
         "top_medicaid_drugs": top_medicaid_drugs,
         "state_units_for_top_drug": state_units_for_top_drug,
         "state_contribution_top_spend_drug": state_contribution_top_spend_drug,
+        "labeler_summary": labeler_summary.reset_index(drop=True),
         "state_competition": state_competition,
         "non_medicaid_spending": non_medicaid_spending,
     }
