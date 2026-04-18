@@ -3,6 +3,8 @@ Medicaid Drug Utilization Analysis
 
 This is a Streamlit analytics app and automated Python ETL pipeline for CMS Medicaid State Drug Utilization Data (SDUD). It uses the latest configured CMS file, preprocesses millions of utilization and reimbursement rows, builds normalized analysis outputs, and lets users explore Medicaid drug utilization interactively.
 
+[Live Streamlit App](https://medicaid-drug-utilization-analysis.streamlit.app/)
+
 ![App preview](assets/app-screenshot.png)
 
 [![Deploy to Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=https://github.com/omkar-dharkar/Medicaid-Drug-Utilization-Analysis&branch=main&mainModule=app.py)
